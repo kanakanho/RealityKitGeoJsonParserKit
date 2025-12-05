@@ -87,7 +87,9 @@ public class GeoJSONModelEntity: ModelEntity {
     ///   - transform: New coordinate transformation
     ///   - material: New material to apply
     public func update(transform: CoordinateTransform? = nil, material: Material? = nil) {
-        guard let geometry = geometry else { return }
+        guard geometry != nil else { return }
+        
+        let needsRegenerate = transform != nil
         
         if let transform = transform {
             coordinateTransform = transform
@@ -97,10 +99,19 @@ public class GeoJSONModelEntity: ModelEntity {
             appliedMaterial = material
         }
         
-        regenerate()
+        // Optimize: only regenerate if transform changed
+        if needsRegenerate {
+            regenerate()
+        } else if material != nil {
+            // If only material changed, just reapply it
+            applyMaterial(material)
+        }
     }
     
     /// Regenerate the visual representation based on current parameters
+    /// Note: This is a full regeneration which recreates all meshes.
+    /// This approach is simpler and more reliable than differential updates,
+    /// though less efficient for frequent updates.
     private func regenerate() {
         guard let component = geoJSONComponent else { return }
         
@@ -190,7 +201,7 @@ public extension Geometry {
     ///   - transform: Coordinate transformation configuration
     ///   - material: Optional material to apply to the entity
     /// - Returns: GeoJSONModelEntity with geometry data and update methods
-    func toGeoJSONModelEntity(
+    public func toGeoJSONModelEntity(
         transform: CoordinateTransform = CoordinateTransform(),
         material: Material? = nil
     ) -> GeoJSONModelEntity? {
