@@ -2,6 +2,152 @@
 import RealityKit
 import simd
 
+/// Component to store GeoJSON geometry data in a ModelEntity
+@available(iOS 13.0, macOS 10.15, *)
+public struct GeoJSONComponent: Component {
+    /// The original geometry
+    public let geometry: Geometry
+    
+    /// The coordinate transformation used
+    public var transform: CoordinateTransform
+    
+    /// The material applied to the entity
+    public var material: Material?
+    
+    public init(geometry: Geometry, transform: CoordinateTransform, material: Material? = nil) {
+        self.geometry = geometry
+        self.transform = transform
+        self.material = material
+    }
+}
+
+/// Extended ModelEntity with GeoJSON geometry information and update capabilities
+@available(iOS 13.0, macOS 10.15, *)
+public class GeoJSONModelEntity: ModelEntity {
+    
+    /// The GeoJSON component storing geometry data
+    public var geoJSONComponent: GeoJSONComponent? {
+        get { components[GeoJSONComponent.self] }
+        set { components[GeoJSONComponent.self] = newValue }
+    }
+    
+    /// The original geometry
+    public var geometry: Geometry? {
+        return geoJSONComponent?.geometry
+    }
+    
+    /// The coordinate transformation configuration
+    public var coordinateTransform: CoordinateTransform? {
+        get { geoJSONComponent?.transform }
+        set {
+            if let newValue = newValue, var component = geoJSONComponent {
+                component.transform = newValue
+                geoJSONComponent = component
+            }
+        }
+    }
+    
+    /// The material applied to this entity
+    public var appliedMaterial: Material? {
+        get { geoJSONComponent?.material }
+        set {
+            if var component = geoJSONComponent {
+                component.material = newValue
+                geoJSONComponent = component
+            }
+        }
+    }
+    
+    /// Update the entity's coordinate transformation and regenerate the visual representation
+    /// - Parameter transform: New coordinate transformation
+    public func updateTransform(_ transform: CoordinateTransform) {
+        guard let geometry = geometry else { return }
+        
+        // Update the component
+        coordinateTransform = transform
+        
+        // Regenerate the entity
+        regenerate()
+    }
+    
+    /// Update the entity's material and reapply it to the visual representation
+    /// - Parameter material: New material to apply
+    public func updateMaterial(_ material: Material?) {
+        guard geometry != nil else { return }
+        
+        // Update the component
+        appliedMaterial = material
+        
+        // Reapply material
+        applyMaterial(material)
+    }
+    
+    /// Update both transform and material, then regenerate
+    /// - Parameters:
+    ///   - transform: New coordinate transformation
+    ///   - material: New material to apply
+    public func update(transform: CoordinateTransform? = nil, material: Material? = nil) {
+        guard let geometry = geometry else { return }
+        
+        if let transform = transform {
+            coordinateTransform = transform
+        }
+        
+        if let material = material {
+            appliedMaterial = material
+        }
+        
+        regenerate()
+    }
+    
+    /// Regenerate the visual representation based on current parameters
+    private func regenerate() {
+        guard let component = geoJSONComponent else { return }
+        
+        // Remove all children
+        children.removeAll()
+        
+        // Recreate based on geometry type
+        let newEntity = component.geometry.toModelEntity(
+            transform: component.transform,
+            material: component.material
+        )
+        
+        if let newEntity = newEntity {
+            // Copy children and properties from newly created entity
+            for child in newEntity.children {
+                addChild(child)
+            }
+            
+            // Copy mesh and materials if this is a simple entity
+            if let modelEntity = newEntity as? ModelEntity {
+                self.model = modelEntity.model
+            }
+        }
+    }
+    
+    /// Apply material to this entity and all children
+    /// - Parameter material: Material to apply
+    private func applyMaterial(_ material: Material?) {
+        guard let material = material else { return }
+        
+        // Apply to self if has model
+        if self.model != nil {
+            self.model?.materials = [material]
+        }
+        
+        // Apply to all children recursively
+        for child in children {
+            if let modelChild = child as? ModelEntity {
+                modelChild.model?.materials = [material]
+            }
+            if let geoChild = child as? GeoJSONModelEntity {
+                geoChild.applyMaterial(material)
+            }
+        }
+    }
+}
+
 /// Extensions for converting GeoJSON geometries to RealityKit entities
 @available(iOS 13.0, macOS 10.15, *)
 public extension Geometry {
@@ -37,6 +183,44 @@ public extension Geometry {
         case .geometryCollection(let geometries):
             return createGeometryCollectionEntity(geometries: geometries, transform: transform, material: material)
         }
+    }
+    
+    /// Convert geometry to GeoJSONModelEntity with parameter tracking and update capabilities
+    /// - Parameters:
+    ///   - transform: Coordinate transformation configuration
+    ///   - material: Optional material to apply to the entity
+    /// - Returns: GeoJSONModelEntity with geometry data and update methods
+    func toGeoJSONModelEntity(
+        transform: CoordinateTransform = CoordinateTransform(),
+        material: Material? = nil
+    ) -> GeoJSONModelEntity? {
+        guard let baseEntity = toModelEntity(transform: transform, material: material) else {
+            return nil
+        }
+        
+        let geoEntity = GeoJSONModelEntity()
+        
+        // Store the geometry data as a component
+        geoEntity.geoJSONComponent = GeoJSONComponent(
+            geometry: self,
+            transform: transform,
+            material: material
+        )
+        
+        // Copy the visual representation
+        for child in baseEntity.children {
+            geoEntity.addChild(child)
+        }
+        
+        // Copy model if it exists
+        if let modelEntity = baseEntity as? ModelEntity {
+            geoEntity.model = modelEntity.model
+            geoEntity.position = modelEntity.position
+            geoEntity.orientation = modelEntity.orientation
+            geoEntity.scale = modelEntity.scale
+        }
+        
+        return geoEntity
     }
     
     // MARK: - Private Entity Creation Methods
@@ -218,6 +402,18 @@ public extension Feature {
     ) -> ModelEntity? {
         return geometry?.toModelEntity(transform: transform, material: material)
     }
+    
+    /// Convert feature to GeoJSONModelEntity with parameter tracking and update capabilities
+    /// - Parameters:
+    ///   - transform: Coordinate transformation configuration
+    ///   - material: Optional material to apply to the entity
+    /// - Returns: GeoJSONModelEntity with geometry data and update methods, or nil if no geometry
+    func toGeoJSONModelEntity(
+        transform: CoordinateTransform = CoordinateTransform(),
+        material: Material? = nil
+    ) -> GeoJSONModelEntity? {
+        return geometry?.toGeoJSONModelEntity(transform: transform, material: material)
+    }
 }
 
 @available(iOS 13.0, macOS 10.15, *)
@@ -236,6 +432,26 @@ public extension FeatureCollection {
         
         for feature in features {
             if let entity = feature.toModelEntity(transform: transform, material: material) {
+                containerEntity.addChild(entity)
+            }
+        }
+        
+        return containerEntity
+    }
+    
+    /// Convert feature collection to container with GeoJSONModelEntity children
+    /// - Parameters:
+    ///   - transform: Coordinate transformation configuration
+    ///   - material: Optional material to apply to all entities
+    /// - Returns: ModelEntity containing all features as GeoJSONModelEntity children with update capabilities
+    func toGeoJSONModelEntity(
+        transform: CoordinateTransform = CoordinateTransform(),
+        material: Material? = nil
+    ) -> ModelEntity {
+        let containerEntity = ModelEntity()
+        
+        for feature in features {
+            if let entity = feature.toGeoJSONModelEntity(transform: transform, material: material) {
                 containerEntity.addChild(entity)
             }
         }

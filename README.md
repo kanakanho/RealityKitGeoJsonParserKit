@@ -14,6 +14,10 @@ A Swift library for handling GeoJSON format data with RealityKit.
 - ✅ Feature and FeatureCollectionのサポート
 - ✅ 地理座標から3D座標への変換 (Geographic to 3D coordinate transformation)
 - ✅ RealityKitエンティティへの変換 (Convert to RealityKit entities)
+- ✅ パラメータ追跡と動的更新機能 (Parameter tracking and dynamic update capabilities)
+  - ジオメトリパラメータの保存 (Store geometry parameters)
+  - 座標変換の動的更新 (Dynamic transform updates)
+  - マテリアルの動的変更 (Dynamic material changes)
 
 ## インストール (Installation)
 
@@ -127,6 +131,59 @@ arView.scene.addAnchor(anchorEntity)
 #endif
 ```
 
+### パラメータ追跡と動的更新 (Parameter Tracking and Dynamic Updates)
+
+GeoJSONModelEntityを使用すると、ジオメトリパラメータを保存し、後で動的に更新できます。
+
+Using GeoJSONModelEntity, you can store geometry parameters and update them dynamically later.
+
+```swift
+#if canImport(RealityKit)
+import RealityKit
+import RealityKitGeoJsonParserKit
+
+// GeoJSONをパース
+let geometry = try GeoJSONParser.parseGeometry(jsonString: pointJSON)
+
+// GeoJSONModelEntityとして作成（パラメータ追跡機能付き）
+let transform = CoordinateTransform(
+    config: .init(origin: (139.7671, 35.6812), scale: 100.0)
+)
+let geoEntity = geometry.toGeoJSONModelEntity(transform: transform)
+
+// 元のジオメトリにアクセス
+if let originalGeometry = geoEntity?.geometry {
+    print("Geometry type: \(originalGeometry.type)")
+}
+
+// 座標変換を動的に更新
+let newTransform = CoordinateTransform(
+    config: .init(origin: (139.7671, 35.6812), scale: 200.0)
+)
+geoEntity?.updateTransform(newTransform)
+
+// マテリアルを動的に変更
+let newMaterial = SimpleMaterial(color: .green, isMetallic: false)
+geoEntity?.updateMaterial(newMaterial)
+
+// 複数のパラメータを同時に更新
+geoEntity?.update(
+    transform: newTransform,
+    material: newMaterial
+)
+
+// FeatureCollectionもGeoJSONModelEntityとして作成可能
+let containerEntity = featureCollection.toGeoJSONModelEntity(transform: transform)
+
+// 各子エンティティも個別に更新可能
+for child in containerEntity.children {
+    if let geoChild = child as? GeoJSONModelEntity {
+        geoChild.updateMaterial(SimpleMaterial(color: .blue, isMetallic: false))
+    }
+}
+#endif
+```
+
 ### 各ジオメトリタイプの例 (Geometry Type Examples)
 
 #### Point (点)
@@ -218,6 +275,42 @@ GeoJSONデータをパースするための主要なクラスです。
 GeoJSONジオメトリをRealityKitのModelEntityに変換します。
 
 - `toModelEntity(transform:material:) -> ModelEntity?` - ジオメトリをRealityKitエンティティに変換
+- `toGeoJSONModelEntity(transform:material:) -> GeoJSONModelEntity?` - パラメータ追跡機能付きエンティティに変換
+
+### GeoJSONModelEntity (RealityKit)
+
+ジオメトリパラメータを保存し、動的更新が可能なModelEntityのサブクラス。
+
+Subclass of ModelEntity that stores geometry parameters and allows dynamic updates.
+
+#### Properties
+
+- `geometry: Geometry?` - 元のGeoJSONジオメトリ (Original GeoJSON geometry)
+- `coordinateTransform: CoordinateTransform?` - 現在の座標変換設定 (Current coordinate transformation)
+- `appliedMaterial: Material?` - 適用されているマテリアル (Applied material)
+
+#### Methods
+
+- `updateTransform(_ transform: CoordinateTransform)` - 座標変換を更新して表示を再生成 (Update transform and regenerate display)
+- `updateMaterial(_ material: Material?)` - マテリアルを更新して再適用 (Update and reapply material)
+- `update(transform:material:)` - 複数のパラメータを同時に更新 (Update multiple parameters simultaneously)
+
+#### Usage Example
+
+```swift
+// Create entity with parameter tracking
+let geoEntity = geometry.toGeoJSONModelEntity(transform: transform)
+
+// Access stored parameters
+print("Geometry type: \(geoEntity.geometry?.type)")
+
+// Update transform dynamically
+let newTransform = CoordinateTransform(config: .init(scale: 200.0))
+geoEntity.updateTransform(newTransform)
+
+// Update material dynamically
+geoEntity.updateMaterial(SimpleMaterial(color: .blue, isMetallic: false))
+```
 
 ## 座標系について (Coordinate System)
 

@@ -365,6 +365,129 @@ import Foundation
     #expect(geometry.type == .point)
 }
 
+// MARK: - GeoJSONModelEntity Tests
+
+#if canImport(RealityKit)
+@Test func testGeoJSONModelEntityProperties() throws {
+    let pointJSON = """
+    {
+        "type": "Point",
+        "coordinates": [139.7671, 35.6812, 50.0]
+    }
+    """
+    
+    let geometry = try GeoJSONParser.parseGeometry(jsonString: pointJSON)
+    
+    let config = CoordinateTransform.Configuration(
+        origin: (139.7671, 35.6812),
+        scale: 1.0
+    )
+    let transform = CoordinateTransform(config: config)
+    
+    let entity = geometry.toGeoJSONModelEntity(transform: transform)
+    
+    #expect(entity != nil)
+    if let entity = entity {
+        // Check that geometry is stored
+        #expect(entity.geometry != nil)
+        
+        // Check that transform is stored
+        #expect(entity.coordinateTransform != nil)
+    }
+}
+
+@Test func testGeoJSONModelEntityUpdateTransform() throws {
+    let pointJSON = """
+    {
+        "type": "Point",
+        "coordinates": [139.7671, 35.6812]
+    }
+    """
+    
+    let geometry = try GeoJSONParser.parseGeometry(jsonString: pointJSON)
+    
+    let initialConfig = CoordinateTransform.Configuration(
+        origin: (139.7671, 35.6812),
+        scale: 1.0
+    )
+    let initialTransform = CoordinateTransform(config: initialConfig)
+    
+    let entity = geometry.toGeoJSONModelEntity(transform: initialTransform)
+    
+    #expect(entity != nil)
+    if let entity = entity {
+        // Update transform with new scale
+        let newConfig = CoordinateTransform.Configuration(
+            origin: (139.7671, 35.6812),
+            scale: 100.0
+        )
+        let newTransform = CoordinateTransform(config: newConfig)
+        
+        entity.updateTransform(newTransform)
+        
+        // Verify transform was updated
+        #expect(entity.coordinateTransform != nil)
+    }
+}
+
+@Test func testFeatureToGeoJSONModelEntity() throws {
+    let featureJSON = """
+    {
+        "type": "Feature",
+        "geometry": {
+            "type": "Point",
+            "coordinates": [139.7671, 35.6812]
+        },
+        "properties": {
+            "name": "Tokyo"
+        }
+    }
+    """
+    
+    let feature = try GeoJSONParser.parseFeature(jsonString: featureJSON)
+    
+    let transform = CoordinateTransform()
+    let entity = feature.toGeoJSONModelEntity(transform: transform)
+    
+    #expect(entity != nil)
+    if let entity = entity {
+        #expect(entity.geometry != nil)
+    }
+}
+
+@Test func testFeatureCollectionToGeoJSONModelEntity() throws {
+    let collectionJSON = """
+    {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [139.7671, 35.6812]
+                }
+            },
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [139.7681, 35.6822]
+                }
+            }
+        ]
+    }
+    """
+    
+    let collection = try GeoJSONParser.parse(jsonString: collectionJSON)
+    
+    let transform = CoordinateTransform()
+    let containerEntity = collection.toGeoJSONModelEntity(transform: transform)
+    
+    // Should have 2 children (one for each feature)
+    #expect(containerEntity.children.count == 2)
+}
+#endif
+
 // MARK: - Integration Tests
 
 @Test func testCompleteWorkflow() throws {

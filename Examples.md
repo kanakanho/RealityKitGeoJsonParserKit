@@ -486,3 +486,117 @@ func processBatch(_ features: [Feature]) {
     // Process features in this batch
 }
 ```
+
+### 4. Dynamic Updates with GeoJSONModelEntity
+
+```swift
+#if canImport(RealityKit)
+import RealityKit
+import RealityKitGeoJsonParserKit
+
+// Create an entity with parameter tracking
+let geometry = try GeoJSONParser.parseGeometry(jsonString: """
+{
+  "type": "Point",
+  "coordinates": [139.7671, 35.6812, 100.0]
+}
+""")
+
+let initialTransform = CoordinateTransform(
+    config: .init(origin: (139.7671, 35.6812), scale: 50.0)
+)
+
+guard let geoEntity = geometry.toGeoJSONModelEntity(
+    transform: initialTransform,
+    material: SimpleMaterial(color: .red, isMetallic: false)
+) else {
+    fatalError("Failed to create entity")
+}
+
+// Add to scene
+let anchor = AnchorEntity(world: .zero)
+anchor.addChild(geoEntity)
+arView.scene.addAnchor(anchor)
+
+// Later, update the scale dynamically (e.g., on user interaction)
+func onScaleChanged(_ newScale: Float) {
+    let newTransform = CoordinateTransform(
+        config: .init(origin: (139.7671, 35.6812), scale: newScale)
+    )
+    geoEntity.updateTransform(newTransform)
+}
+
+// Update color based on some condition
+func onColorChanged(_ color: UIColor) {
+    let newMaterial = SimpleMaterial(color: color, isMetallic: false)
+    geoEntity.updateMaterial(newMaterial)
+}
+
+// Animate changes over time
+func animateEntity() {
+    var scale: Float = 50.0
+    Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
+        scale += 5.0
+        if scale > 200.0 {
+            timer.invalidate()
+            return
+        }
+        
+        let transform = CoordinateTransform(
+            config: .init(origin: (139.7671, 35.6812), scale: scale)
+        )
+        geoEntity.updateTransform(transform)
+    }
+}
+#endif
+```
+
+### 5. Batch Update Multiple Entities
+
+```swift
+#if canImport(RealityKit)
+import RealityKit
+import RealityKitGeoJsonParserKit
+
+// Create multiple entities with tracking
+let collection = try GeoJSONParser.parse(jsonString: featureCollectionJSON)
+
+let initialTransform = CoordinateTransform(
+    config: .init(origin: (139.7671, 35.6812), scale: 100.0)
+)
+
+let containerEntity = collection.toGeoJSONModelEntity(transform: initialTransform)
+arView.scene.addAnchor(AnchorEntity(world: .zero).addChild(containerEntity))
+
+// Update all children at once
+func updateAllEntities(newScale: Float, color: UIColor) {
+    let newTransform = CoordinateTransform(
+        config: .init(origin: (139.7671, 35.6812), scale: newScale)
+    )
+    let newMaterial = SimpleMaterial(color: color, isMetallic: false)
+    
+    for child in containerEntity.children {
+        if let geoChild = child as? GeoJSONModelEntity {
+            geoChild.update(transform: newTransform, material: newMaterial)
+        }
+    }
+}
+
+// Update only specific entities based on properties
+func updateByProperty(propertyName: String, propertyValue: Any) {
+    for (index, feature) in collection.features.enumerated() {
+        guard let properties = feature.properties,
+              let value = properties[propertyName]?.value,
+              "\(value)" == "\(propertyValue)" else {
+            continue
+        }
+        
+        if index < containerEntity.children.count,
+           let geoChild = containerEntity.children[index] as? GeoJSONModelEntity {
+            let highlightMaterial = SimpleMaterial(color: .yellow, isMetallic: false)
+            geoChild.updateMaterial(highlightMaterial)
+        }
+    }
+}
+#endif
+```
