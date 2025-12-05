@@ -25,6 +25,10 @@ public struct Point3D {
     public static func *(lhs: Point3D, rhs: Float) -> Point3D {
         return Point3D(lhs.x * rhs, lhs.y * rhs, lhs.z * rhs)
     }
+    
+    public static func -(lhs: Point3D, rhs: Point3D) -> Point3D {
+        return Point3D(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z)
+    }
 }
 #endif
 
@@ -158,6 +162,7 @@ public struct CoordinateTransform {
     /// - Returns: The center point as Point3D
     public func centerPoint(for positions: [Position]) -> Point3D? {
         guard let bbox = boundingBox(for: positions) else { return nil }
-        return (bbox.min + bbox.max) * 0.5
+        let sum = bbox.min + bbox.max
+        return sum * 0.5
     }
 }

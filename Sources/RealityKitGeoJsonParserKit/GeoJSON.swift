@@ -128,6 +128,8 @@ public struct FeatureCollection: Codable {
 }
 
 /// Helper struct to handle dynamic JSON values
+/// Note: This is a lightweight implementation for self-contained library functionality.
+/// For more complex use cases, consider using a third-party JSON handling library.
 public struct AnyCodable: Codable {
     public let value: Any
     
