@@ -603,3 +603,146 @@ func updateByProperty(propertyName: String, propertyValue: Any) {
 }
 #endif
 ```
+
+### 6. Using User's Current Location for Coordinate Transform
+
+```swift
+#if canImport(RealityKit) && canImport(CoreLocation)
+import RealityKit
+import CoreLocation
+import RealityKitGeoJsonParserKit
+
+class LocationBasedARViewController: UIViewController, CLLocationManagerDelegate {
+    let locationManager = CLLocationManager()
+    var arView: ARView!
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        // Setup location manager
+        locationManager.delegate = self
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let userLocation = locations.last else { return }
+        
+        let userLatitude = userLocation.coordinate.latitude
+        let userLongitude = userLocation.coordinate.longitude
+        
+        // Load nearby POI data from GeoJSON
+        let nearbyPOIs = """
+        {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [\(userLongitude + 0.001), \(userLatitude + 0.001)]
+              },
+              "properties": {
+                "name": "Nearby Cafe",
+                "category": "food"
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [\(userLongitude - 0.001), \(userLatitude + 0.001)]
+              },
+              "properties": {
+                "name": "Park",
+                "category": "recreation"
+              }
+            }
+          ]
+        }
+        """
+        
+        do {
+            let collection = try GeoJSONParser.parse(jsonString: nearbyPOIs)
+            
+            // Create entities using user's location as origin
+            // This centers the AR experience on the user
+            let geoEntities = collection.toGeoJSONModelEntities(
+                userLatitude: userLatitude,
+                userLongitude: userLongitude,
+                scale: 1000.0  // 1000x scale for better visibility in AR
+            )
+            
+            // Add all POIs to AR scene
+            for geoEntity in geoEntities {
+                let anchor = AnchorEntity(world: [0, -1, -2])
+                anchor.addChild(geoEntity.entity)
+                arView.scene.addAnchor(anchor)
+            }
+            
+            // Stop updating location once we have it
+            locationManager.stopUpdatingLocation()
+            
+        } catch {
+            print("Error loading POIs: \(error)")
+        }
+    }
+}
+#endif
+```
+
+### 7. Real-time Location Tracking with Dynamic Updates
+
+```swift
+#if canImport(RealityKit) && canImport(CoreLocation)
+import RealityKit
+import CoreLocation
+import RealityKitGeoJsonParserKit
+
+class DynamicLocationARView {
+    var geoEntities: [GeoJSONModelEntity] = []
+    let arView: ARView
+    
+    init(arView: ARView) {
+        self.arView = arView
+    }
+    
+    func updateUserLocation(latitude: Double, longitude: Double) {
+        // Update all entities to use new user location as origin
+        for geoEntity in geoEntities {
+            let newTransform = CoordinateTransform(
+                config: .init(
+                    origin: (longitude: longitude, latitude: latitude),
+                    scale: 1000.0
+                )
+            )
+            geoEntity.updateTransform(newTransform)
+        }
+    }
+    
+    func loadGeoJSON(jsonString: String, userLatitude: Double, userLongitude: Double) {
+        do {
+            let collection = try GeoJSONParser.parse(jsonString: jsonString)
+            
+            // Create entities centered on user
+            let newEntities = collection.toGeoJSONModelEntities(
+                userLatitude: userLatitude,
+                userLongitude: userLongitude,
+                scale: 1000.0
+            )
+            
+            // Add to scene and track
+            for entity in newEntities {
+                let anchor = AnchorEntity(world: .zero)
+                anchor.addChild(entity.entity)
+                arView.scene.addAnchor(anchor)
+                geoEntities.append(entity)
+            }
+            
+        } catch {
+            print("Error: \(error)")
+        }
+    }
+}
+#endif
+```

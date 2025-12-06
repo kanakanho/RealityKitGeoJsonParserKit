@@ -190,6 +190,50 @@ for geoEntity in geoEntities {
 #endif
 ```
 
+### ユーザーの現在位置を基準とした座標変換 (Coordinate Transform Based on User Location)
+
+ユーザーの現在のWGS84座標（緯度・経度）を使用して、自動的に座標変換を設定できます。
+
+You can automatically set up coordinate transformation using the user's current WGS84 coordinates (latitude and longitude).
+
+```swift
+#if canImport(RealityKit)
+import RealityKit
+import CoreLocation
+import RealityKitGeoJsonParserKit
+
+// ユーザーの現在位置を取得（例）
+let userLatitude = 35.6812  // 東京の緯度
+let userLongitude = 139.7671  // 東京の経度
+
+// GeoJSONをパース
+let geometry = try GeoJSONParser.parseGeometry(jsonString: pointJSON)
+
+// ユーザーの位置を原点として自動的に座標変換
+guard let geoEntity = geometry.toGeoJSONModelEntity(
+    userLatitude: userLatitude,
+    userLongitude: userLongitude,
+    scale: 100.0
+) else {
+    return
+}
+
+// ARシーンに追加
+arView.scene.addAnchor(AnchorEntity().addChild(geoEntity.entity))
+
+// FeatureCollectionでも使用可能
+let geoEntities = featureCollection.toGeoJSONModelEntities(
+    userLatitude: userLatitude,
+    userLongitude: userLongitude,
+    scale: 100.0
+)
+
+for geoEntity in geoEntities {
+    arView.scene.addAnchor(AnchorEntity().addChild(geoEntity.entity))
+}
+#endif
+```
+
 ### 各ジオメトリタイプの例 (Geometry Type Examples)
 
 #### Point (点)

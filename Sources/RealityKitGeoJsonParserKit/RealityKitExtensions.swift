@@ -236,6 +236,28 @@ public extension Geometry {
         return geoEntity
     }
     
+    /// Convert geometry to GeoJSONModelEntity using user's current WGS coordinates as origin
+    /// - Parameters:
+    ///   - userLatitude: User's current latitude in WGS84 (degrees)
+    ///   - userLongitude: User's current longitude in WGS84 (degrees)
+    ///   - scale: Scale factor for visualization (default: 1.0)
+    ///   - material: Optional material to apply to the entity
+    /// - Returns: GeoJSONModelEntity with coordinate transformation centered on user's location
+    @MainActor
+    public func toGeoJSONModelEntity(
+        userLatitude: Double,
+        userLongitude: Double,
+        scale: Float = 1.0,
+        material: Material? = nil
+    ) -> GeoJSONModelEntity? {
+        let config = CoordinateTransform.Configuration(
+            origin: (longitude: userLongitude, latitude: userLatitude),
+            scale: scale
+        )
+        let transform = CoordinateTransform(config: config)
+        return toGeoJSONModelEntity(transform: transform, material: material)
+    }
+    
     // MARK: - Private Entity Creation Methods
     
     @MainActor
@@ -436,6 +458,28 @@ public extension Feature {
     ) -> GeoJSONModelEntity? {
         return geometry?.toGeoJSONModelEntity(transform: transform, material: material)
     }
+    
+    /// Convert feature to GeoJSONModelEntity using user's current WGS coordinates as origin
+    /// - Parameters:
+    ///   - userLatitude: User's current latitude in WGS84 (degrees)
+    ///   - userLongitude: User's current longitude in WGS84 (degrees)
+    ///   - scale: Scale factor for visualization (default: 1.0)
+    ///   - material: Optional material to apply to the entity
+    /// - Returns: GeoJSONModelEntity with coordinate transformation centered on user's location, or nil if no geometry
+    @MainActor
+    func toGeoJSONModelEntity(
+        userLatitude: Double,
+        userLongitude: Double,
+        scale: Float = 1.0,
+        material: Material? = nil
+    ) -> GeoJSONModelEntity? {
+        return geometry?.toGeoJSONModelEntity(
+            userLatitude: userLatitude,
+            userLongitude: userLongitude,
+            scale: scale,
+            material: material
+        )
+    }
 }
 
 @available(iOS 13.0, macOS 10.15, *)
@@ -495,6 +539,30 @@ public extension FeatureCollection {
     ) -> [GeoJSONModelEntity] {
         return features.compactMap { feature in
             feature.toGeoJSONModelEntity(transform: transform, material: material)
+        }
+    }
+    
+    /// Convert feature collection to array of GeoJSONModelEntity wrappers using user's current WGS coordinates
+    /// - Parameters:
+    ///   - userLatitude: User's current latitude in WGS84 (degrees)
+    ///   - userLongitude: User's current longitude in WGS84 (degrees)
+    ///   - scale: Scale factor for visualization (default: 1.0)
+    ///   - material: Optional material to apply to all entities
+    /// - Returns: Array of GeoJSONModelEntity wrappers centered on user's location
+    @MainActor
+    func toGeoJSONModelEntities(
+        userLatitude: Double,
+        userLongitude: Double,
+        scale: Float = 1.0,
+        material: Material? = nil
+    ) -> [GeoJSONModelEntity] {
+        return features.compactMap { feature in
+            feature.toGeoJSONModelEntity(
+                userLatitude: userLatitude,
+                userLongitude: userLongitude,
+                scale: scale,
+                material: material
+            )
         }
     }
 }
