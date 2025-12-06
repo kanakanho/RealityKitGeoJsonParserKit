@@ -73,6 +73,7 @@ public struct CoordinateTransform {
     /// Convert a GeoJSON position (longitude, latitude, altitude) to a 3D point
     /// This method calculates the difference from the reference point (origin) and converts it to 3D coordinates
     /// - Parameter position: GeoJSON position array [longitude, latitude, altitude?]
+    ///                       **IMPORTANT:** Longitude comes FIRST, latitude SECOND!
     /// - Returns: Point3D representing the offset from the origin in 3D space
     public func toPoint3D(_ position: Position) -> Point3D {
         guard position.count >= 2 else {
@@ -83,9 +84,21 @@ public struct CoordinateTransform {
             #endif
         }
         
-        let longitude = position[0]
-        let latitude = position[1]
+        let longitude = position[0]  // First element is longitude (East/West)
+        let latitude = position[1]   // Second element is latitude (North/South)
         let altitude = position.count > 2 ? position[2] : 0.0
+        
+        // Validation: Check if coordinates might be swapped (common mistake)
+        // Valid ranges: longitude [-180, 180], latitude [-90, 90]
+        #if DEBUG
+        if abs(longitude) > 180.0 || abs(latitude) > 90.0 {
+            print("⚠️ Warning: Suspicious coordinates detected!")
+            print("   Position: [\(longitude), \(latitude)]")
+            print("   Longitude (position[0]) should be in range [-180, 180]")
+            print("   Latitude (position[1]) should be in range [-90, 90]")
+            print("   Did you swap latitude and longitude? GeoJSON uses [longitude, latitude] order!")
+        }
+        #endif
         
         // Calculate difference from origin (reference point)
         // This gives us the offset from the user's position when origin is set to user coordinates

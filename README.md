@@ -196,6 +196,14 @@ for geoEntity in geoEntities {
 
 You can use the user's current WGS84 coordinates (latitude and longitude) as a reference point, and place GeoJSON coordinates in 3D space as **offsets from the reference point**.
 
+> ⚠️ **重要 / IMPORTANT**: GeoJSON座標は **[経度, 緯度]** の順序です（[緯度, 経度]ではありません）！
+> 
+> GeoJSON coordinates use **[longitude, latitude]** order (NOT [latitude, longitude])!
+> - **経度 (Longitude)** が最初 - 東西方向 (-180 〜 +180)
+> - **緯度 (Latitude)** が2番目 - 南北方向 (-90 〜 +90)
+> 
+> Example: 東京駅 / Tokyo Station = `[139.7671, 35.6812]` (経度が先 / longitude first)
+
 **仕組み (How it works):**
 - ユーザーの位置を原点（0, 0, 0）とする
 - GeoJSON内の各座標は、ユーザーの位置からの相対的な位置として計算される
@@ -250,6 +258,43 @@ for geoEntity in geoEntities {
     arView.scene.addAnchor(AnchorEntity().addChild(geoEntity.entity))
 }
 #endif
+```
+
+#### プログラマティックにPolygonを作成する例 (Creating Polygon Programmatically)
+
+```swift
+// ユーザーの位置
+let userLatitude = 35.6812
+let userLongitude = 139.7671
+let delta = 0.001  // 約100m
+
+// ⚠️ 正しい順序：[経度, 緯度] / CORRECT ORDER: [longitude, latitude]
+let polygonGeometry: Geometry = .polygon(coordinates: [[
+    [userLongitude - delta, userLatitude - delta],  // 左下 / Bottom-left
+    [userLongitude + delta, userLatitude - delta],  // 右下 / Bottom-right  
+    [userLongitude + delta, userLatitude + delta],  // 右上 / Top-right
+    [userLongitude - delta, userLatitude + delta],  // 左上 / Top-left
+    [userLongitude - delta, userLatitude - delta]   // 閉じる / Close the ring
+]])
+
+// ❌ 間違った順序 / WRONG ORDER (will place mesh far away):
+// let wrongPolygon: Geometry = .polygon(coordinates: [[
+//     [userLatitude - delta, userLongitude - delta],  // ❌ [緯度, 経度] は間違い!
+//     ...
+// ]])
+
+if let polygonEntity = polygonGeometry.toGeoJSONModelEntity(
+    userLatitude: userLatitude,
+    userLongitude: userLongitude,
+    scale: 1.0,
+    material: UnlitMaterial(color: .red)
+) {
+    print("Bounds:", polygonEntity.entity.model?.mesh.bounds)
+    // 正しい場合、boundsは原点の近くになります
+    // Correct result: bounds should be near origin
+    // Example: min: SIMD3(-10, 0, -10), max: SIMD3(10, 0, 10)
+    content.add(polygonEntity.entity)
+}
 ```
 
 ### 各ジオメトリタイプの例 (Geometry Type Examples)

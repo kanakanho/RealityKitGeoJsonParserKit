@@ -536,3 +536,39 @@ import Foundation
         #expect(point3D.y == 50.0)
     }
 }
+
+@Test func testCoordinateOrderMatters() throws {
+    // User location
+    let userLat = 35.6812
+    let userLon = 139.7671
+    let delta = 0.001
+    
+    let config = CoordinateTransform.Configuration(
+        origin: (longitude: userLon, latitude: userLat),
+        scale: 1.0
+    )
+    let transform = CoordinateTransform(config: config)
+    
+    // CORRECT order: [longitude, latitude]
+    let correctPoint = [userLon + delta, userLat + delta]
+    let correctResult = transform.toPoint3D(correctPoint)
+    
+    // Should result in small offset near origin
+    // delta of 0.001 degrees ≈ 111 meters at equator
+    // With scale=1.0, we expect values around 90-111m (cos(lat) affects longitude)
+    #expect(abs(correctResult.x) < 200.0)  // Should be reasonable
+    #expect(abs(correctResult.z) < 200.0)  // Should be reasonable
+    
+    // WRONG order: [latitude, longitude] - common mistake
+    let wrongPoint = [userLat + delta, userLon + delta]
+    let wrongResult = transform.toPoint3D(wrongPoint)
+    
+    // With swapped coordinates, deltaLon and deltaLat will be huge
+    // deltaLon = (userLat+delta) - userLon = 35.6822 - 139.7671 ≈ -104
+    // This results in massive coordinate values
+    #expect(abs(wrongResult.x) > 1000.0)  // Will be HUGE
+    #expect(abs(wrongResult.z) > 1000.0)  // Will be HUGE
+    
+    // This test demonstrates why coordinate order matters!
+    // GeoJSON uses [longitude, latitude], NOT [latitude, longitude]
+}

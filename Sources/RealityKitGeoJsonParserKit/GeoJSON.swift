@@ -1,6 +1,12 @@
 import Foundation
 
 /// GeoJSON Position: [longitude, latitude, altitude (optional)]
+/// 
+/// **IMPORTANT:** GeoJSON uses [longitude, latitude] order, NOT [latitude, longitude]!
+/// - Longitude comes FIRST (East/West: -180 to +180)
+/// - Latitude comes SECOND (North/South: -90 to +90)
+/// 
+/// Example: Tokyo Station is at [139.7671, 35.6812] (longitude first, then latitude)
 public typealias Position = [Double]
 
 /// GeoJSON Geometry Types
