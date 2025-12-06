@@ -149,37 +149,43 @@ let geometry = try GeoJSONParser.parseGeometry(jsonString: pointJSON)
 let transform = CoordinateTransform(
     config: .init(origin: (139.7671, 35.6812), scale: 100.0)
 )
-let geoEntity = geometry.toGeoJSONModelEntity(transform: transform)
+guard let geoEntity = geometry.toGeoJSONModelEntity(transform: transform) else {
+    return
+}
 
 // 元のジオメトリにアクセス
-if let originalGeometry = geoEntity?.geometry {
+if let originalGeometry = geoEntity.geometry {
     print("Geometry type: \(originalGeometry.type)")
 }
+
+// 基となるModelEntityにアクセス
+let modelEntity = geoEntity.entity
+arView.scene.addAnchor(AnchorEntity().addChild(modelEntity))
 
 // 座標変換を動的に更新
 let newTransform = CoordinateTransform(
     config: .init(origin: (139.7671, 35.6812), scale: 200.0)
 )
-geoEntity?.updateTransform(newTransform)
+geoEntity.updateTransform(newTransform)
 
 // マテリアルを動的に変更
 let newMaterial = SimpleMaterial(color: .green, isMetallic: false)
-geoEntity?.updateMaterial(newMaterial)
+geoEntity.updateMaterial(newMaterial)
 
 // 複数のパラメータを同時に更新
-geoEntity?.update(
+geoEntity.update(
     transform: newTransform,
     material: newMaterial
 )
 
-// FeatureCollectionもGeoJSONModelEntityとして作成可能
-let containerEntity = featureCollection.toGeoJSONModelEntity(transform: transform)
+// FeatureCollectionから複数のGeoJSONModelEntityを取得
+let geoEntities = featureCollection.toGeoJSONModelEntities(transform: transform)
 
-// 各子エンティティも個別に更新可能
-for child in containerEntity.children {
-    if let geoChild = child as? GeoJSONModelEntity {
-        geoChild.updateMaterial(SimpleMaterial(color: .blue, isMetallic: false))
-    }
+// 各エンティティを個別に更新可能
+for geoEntity in geoEntities {
+    geoEntity.updateMaterial(SimpleMaterial(color: .blue, isMetallic: false))
+    // ModelEntityをシーンに追加
+    arView.scene.addAnchor(AnchorEntity().addChild(geoEntity.entity))
 }
 #endif
 ```
@@ -285,6 +291,7 @@ Subclass of ModelEntity that stores geometry parameters and allows dynamic updat
 
 #### Properties
 
+- `entity: ModelEntity` - 基となるRealityKit ModelEntity (Underlying RealityKit ModelEntity)
 - `geometry: Geometry?` - 元のGeoJSONジオメトリ (Original GeoJSON geometry)
 - `coordinateTransform: CoordinateTransform?` - 現在の座標変換設定 (Current coordinate transformation)
 - `appliedMaterial: Material?` - 適用されているマテリアル (Applied material)
@@ -299,10 +306,15 @@ Subclass of ModelEntity that stores geometry parameters and allows dynamic updat
 
 ```swift
 // Create entity with parameter tracking
-let geoEntity = geometry.toGeoJSONModelEntity(transform: transform)
+guard let geoEntity = geometry.toGeoJSONModelEntity(transform: transform) else {
+    return
+}
 
 // Access stored parameters
 print("Geometry type: \(geoEntity.geometry?.type)")
+
+// Access underlying ModelEntity to add to scene
+arView.scene.addAnchor(AnchorEntity().addChild(geoEntity.entity))
 
 // Update transform dynamically
 let newTransform = CoordinateTransform(config: .init(scale: 200.0))

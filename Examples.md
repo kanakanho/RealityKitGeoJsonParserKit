@@ -513,9 +513,9 @@ guard let geoEntity = geometry.toGeoJSONModelEntity(
     fatalError("Failed to create entity")
 }
 
-// Add to scene
+// Add to scene - use the underlying ModelEntity
 let anchor = AnchorEntity(world: .zero)
-anchor.addChild(geoEntity)
+anchor.addChild(geoEntity.entity)
 arView.scene.addAnchor(anchor)
 
 // Later, update the scale dynamically (e.g., on user interaction)
@@ -565,20 +565,25 @@ let initialTransform = CoordinateTransform(
     config: .init(origin: (139.7671, 35.6812), scale: 100.0)
 )
 
-let containerEntity = collection.toGeoJSONModelEntity(transform: initialTransform)
-arView.scene.addAnchor(AnchorEntity(world: .zero).addChild(containerEntity))
+// Get array of GeoJSONModelEntity wrappers
+let geoEntities = collection.toGeoJSONModelEntities(transform: initialTransform)
 
-// Update all children at once
+// Add all entities to scene
+let anchor = AnchorEntity(world: .zero)
+for geoEntity in geoEntities {
+    anchor.addChild(geoEntity.entity)
+}
+arView.scene.addAnchor(anchor)
+
+// Update all entities at once
 func updateAllEntities(newScale: Float, color: UIColor) {
     let newTransform = CoordinateTransform(
         config: .init(origin: (139.7671, 35.6812), scale: newScale)
     )
     let newMaterial = SimpleMaterial(color: color, isMetallic: false)
     
-    for child in containerEntity.children {
-        if let geoChild = child as? GeoJSONModelEntity {
-            geoChild.update(transform: newTransform, material: newMaterial)
-        }
+    for geoEntity in geoEntities {
+        geoEntity.update(transform: newTransform, material: newMaterial)
     }
 }
 
@@ -587,15 +592,13 @@ func updateByProperty(propertyName: String, propertyValue: Any) {
     for (index, feature) in collection.features.enumerated() {
         guard let properties = feature.properties,
               let value = properties[propertyName]?.value,
-              "\(value)" == "\(propertyValue)" else {
+              "\(value)" == "\(propertyValue)",
+              index < geoEntities.count else {
             continue
         }
         
-        if index < containerEntity.children.count,
-           let geoChild = containerEntity.children[index] as? GeoJSONModelEntity {
-            let highlightMaterial = SimpleMaterial(color: .yellow, isMetallic: false)
-            geoChild.updateMaterial(highlightMaterial)
-        }
+        let highlightMaterial = SimpleMaterial(color: .yellow, isMetallic: false)
+        geoEntities[index].updateMaterial(highlightMaterial)
     }
 }
 #endif

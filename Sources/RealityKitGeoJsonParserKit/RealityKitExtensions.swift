@@ -21,14 +21,18 @@ public struct GeoJSONComponent: Component {
     }
 }
 
-/// Extended ModelEntity with GeoJSON geometry information and update capabilities
+/// Wrapper for ModelEntity with GeoJSON geometry information and update capabilities
+/// Uses composition instead of inheritance since ModelEntity is not open for subclassing
 @available(iOS 13.0, macOS 10.15, *)
-public class GeoJSONModelEntity: ModelEntity {
+public class GeoJSONModelEntity {
+    
+    /// The underlying ModelEntity
+    public let entity: ModelEntity
     
     /// The GeoJSON component storing geometry data
-    public var geoJSONComponent: GeoJSONComponent? {
-        get { components[GeoJSONComponent.self] }
-        set { components[GeoJSONComponent.self] = newValue }
+    private var geoJSONComponent: GeoJSONComponent? {
+        get { entity.components[GeoJSONComponent.self] }
+        set { entity.components[GeoJSONComponent.self] = newValue }
     }
     
     /// The original geometry
@@ -56,6 +60,12 @@ public class GeoJSONModelEntity: ModelEntity {
                 geoJSONComponent = component
             }
         }
+    }
+    
+    /// Initialize with a ModelEntity
+    /// - Parameter entity: The ModelEntity to wrap
+    public init(entity: ModelEntity) {
+        self.entity = entity
     }
     
     /// Update the entity's coordinate transformation and regenerate the visual representation
@@ -116,7 +126,7 @@ public class GeoJSONModelEntity: ModelEntity {
         guard let component = geoJSONComponent else { return }
         
         // Remove all children
-        children.removeAll()
+        entity.children.removeAll()
         
         // Recreate based on geometry type
         let newEntity = component.geometry.toModelEntity(
@@ -127,12 +137,12 @@ public class GeoJSONModelEntity: ModelEntity {
         if let newEntity = newEntity {
             // Copy children and properties from newly created entity
             for child in newEntity.children {
-                addChild(child)
+                entity.addChild(child)
             }
             
             // Copy mesh and materials if this is a simple entity
             if let modelEntity = newEntity as? ModelEntity {
-                self.model = modelEntity.model
+                entity.model = modelEntity.model
             }
         }
     }
@@ -143,17 +153,14 @@ public class GeoJSONModelEntity: ModelEntity {
         guard let material = material else { return }
         
         // Apply to self if has model
-        if self.model != nil {
-            self.model?.materials = [material]
+        if entity.model != nil {
+            entity.model?.materials = [material]
         }
         
         // Apply to all children recursively
-        for child in children {
+        for child in entity.children {
             if let modelChild = child as? ModelEntity {
                 modelChild.model?.materials = [material]
-            }
-            if let geoChild = child as? GeoJSONModelEntity {
-                geoChild.applyMaterial(material)
             }
         }
     }
@@ -209,27 +216,15 @@ public extension Geometry {
             return nil
         }
         
-        let geoEntity = GeoJSONModelEntity()
+        // Create wrapper with the base entity
+        let geoEntity = GeoJSONModelEntity(entity: baseEntity)
         
         // Store the geometry data as a component
-        geoEntity.geoJSONComponent = GeoJSONComponent(
+        baseEntity.components[GeoJSONComponent.self] = GeoJSONComponent(
             geometry: self,
             transform: transform,
             material: material
         )
-        
-        // Copy the visual representation
-        for child in baseEntity.children {
-            geoEntity.addChild(child)
-        }
-        
-        // Copy model if it exists
-        if let modelEntity = baseEntity as? ModelEntity {
-            geoEntity.model = modelEntity.model
-            geoEntity.position = modelEntity.position
-            geoEntity.orientation = modelEntity.orientation
-            geoEntity.scale = modelEntity.scale
-        }
         
         return geoEntity
     }
@@ -462,12 +457,26 @@ public extension FeatureCollection {
         let containerEntity = ModelEntity()
         
         for feature in features {
-            if let entity = feature.toGeoJSONModelEntity(transform: transform, material: material) {
-                containerEntity.addChild(entity)
+            if let geoEntity = feature.toGeoJSONModelEntity(transform: transform, material: material) {
+                containerEntity.addChild(geoEntity.entity)
             }
         }
         
         return containerEntity
+    }
+    
+    /// Convert feature collection to array of GeoJSONModelEntity wrappers
+    /// - Parameters:
+    ///   - transform: Coordinate transformation configuration
+    ///   - material: Optional material to apply to all entities
+    /// - Returns: Array of GeoJSONModelEntity wrappers for each feature
+    func toGeoJSONModelEntities(
+        transform: CoordinateTransform = CoordinateTransform(),
+        material: Material? = nil
+    ) -> [GeoJSONModelEntity] {
+        return features.compactMap { feature in
+            feature.toGeoJSONModelEntity(transform: transform, material: material)
+        }
     }
 }
 
