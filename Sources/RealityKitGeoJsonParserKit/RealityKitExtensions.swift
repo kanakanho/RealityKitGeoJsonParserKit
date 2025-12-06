@@ -70,6 +70,7 @@ public class GeoJSONModelEntity {
     
     /// Update the entity's coordinate transformation and regenerate the visual representation
     /// - Parameter transform: New coordinate transformation
+    @MainActor
     public func updateTransform(_ transform: CoordinateTransform) {
         guard let geometry = geometry else { return }
         
@@ -82,6 +83,7 @@ public class GeoJSONModelEntity {
     
     /// Update the entity's material and reapply it to the visual representation
     /// - Parameter material: New material to apply
+    @MainActor
     public func updateMaterial(_ material: Material?) {
         guard geometry != nil else { return }
         
@@ -96,6 +98,7 @@ public class GeoJSONModelEntity {
     /// - Parameters:
     ///   - transform: New coordinate transformation
     ///   - material: New material to apply
+    @MainActor
     public func update(transform: CoordinateTransform? = nil, material: Material? = nil) {
         guard geometry != nil else { return }
         
@@ -122,6 +125,7 @@ public class GeoJSONModelEntity {
     /// Note: This is a full regeneration which recreates all meshes.
     /// This approach is simpler and more reliable than differential updates,
     /// though less efficient for frequent updates.
+    @MainActor
     private func regenerate() {
         guard let component = geoJSONComponent else { return }
         
@@ -149,6 +153,7 @@ public class GeoJSONModelEntity {
     
     /// Apply material to this entity and all children
     /// - Parameter material: Material to apply
+    @MainActor
     private func applyMaterial(_ material: Material?) {
         guard let material = material else { return }
         
@@ -175,6 +180,7 @@ public extension Geometry {
     ///   - transform: Coordinate transformation configuration
     ///   - material: Optional material to apply to the entity
     /// - Returns: ModelEntity representing the geometry, or nil if conversion is not supported
+    @MainActor
     func toModelEntity(
         transform: CoordinateTransform = CoordinateTransform(),
         material: Material? = nil
@@ -208,6 +214,7 @@ public extension Geometry {
     ///   - transform: Coordinate transformation configuration
     ///   - material: Optional material to apply to the entity
     /// - Returns: GeoJSONModelEntity with geometry data and update methods
+    @MainActor
     public func toGeoJSONModelEntity(
         transform: CoordinateTransform = CoordinateTransform(),
         material: Material? = nil
@@ -231,6 +238,7 @@ public extension Geometry {
     
     // MARK: - Private Entity Creation Methods
     
+    @MainActor
     private func createPointEntity(
         coordinates: Position,
         transform: CoordinateTransform,
@@ -246,6 +254,7 @@ public extension Geometry {
         return entity
     }
     
+    @MainActor
     private func createLineStringEntity(
         coordinates: [Position],
         transform: CoordinateTransform,
@@ -286,6 +295,7 @@ public extension Geometry {
         return containerEntity
     }
     
+    @MainActor
     private func createPolygonEntity(
         coordinates: [[Position]],
         transform: CoordinateTransform,
@@ -329,6 +339,7 @@ public extension Geometry {
         return entity
     }
     
+    @MainActor
     private func createMultiPointEntity(
         coordinates: [Position],
         transform: CoordinateTransform,
@@ -345,6 +356,7 @@ public extension Geometry {
         return containerEntity
     }
     
+    @MainActor
     private func createMultiLineStringEntity(
         coordinates: [[Position]],
         transform: CoordinateTransform,
@@ -361,6 +373,7 @@ public extension Geometry {
         return containerEntity
     }
     
+    @MainActor
     private func createMultiPolygonEntity(
         coordinates: [[[Position]]],
         transform: CoordinateTransform,
@@ -377,6 +390,7 @@ public extension Geometry {
         return containerEntity
     }
     
+    @MainActor
     private func createGeometryCollectionEntity(
         geometries: [Geometry],
         transform: CoordinateTransform,
@@ -402,6 +416,7 @@ public extension Feature {
     ///   - transform: Coordinate transformation configuration
     ///   - material: Optional material to apply to the entity
     /// - Returns: ModelEntity representing the feature, or nil if no geometry
+    @MainActor
     func toModelEntity(
         transform: CoordinateTransform = CoordinateTransform(),
         material: Material? = nil
@@ -414,6 +429,7 @@ public extension Feature {
     ///   - transform: Coordinate transformation configuration
     ///   - material: Optional material to apply to the entity
     /// - Returns: GeoJSONModelEntity with geometry data and update methods, or nil if no geometry
+    @MainActor
     func toGeoJSONModelEntity(
         transform: CoordinateTransform = CoordinateTransform(),
         material: Material? = nil
@@ -430,6 +446,7 @@ public extension FeatureCollection {
     ///   - transform: Coordinate transformation configuration
     ///   - material: Optional material to apply to all entities
     /// - Returns: ModelEntity containing all features as children
+    @MainActor
     func toModelEntity(
         transform: CoordinateTransform = CoordinateTransform(),
         material: Material? = nil
@@ -450,6 +467,7 @@ public extension FeatureCollection {
     ///   - transform: Coordinate transformation configuration
     ///   - material: Optional material to apply to all entities
     /// - Returns: ModelEntity containing all features as GeoJSONModelEntity children with update capabilities
+    @MainActor
     func toGeoJSONModelEntity(
         transform: CoordinateTransform = CoordinateTransform(),
         material: Material? = nil
@@ -470,6 +488,7 @@ public extension FeatureCollection {
     ///   - transform: Coordinate transformation configuration
     ///   - material: Optional material to apply to all entities
     /// - Returns: Array of GeoJSONModelEntity wrappers for each feature
+    @MainActor
     func toGeoJSONModelEntities(
         transform: CoordinateTransform = CoordinateTransform(),
         material: Material? = nil
