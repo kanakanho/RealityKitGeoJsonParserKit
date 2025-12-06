@@ -237,12 +237,15 @@ public extension Geometry {
     }
     
     /// Convert geometry to GeoJSONModelEntity using user's current WGS coordinates as origin
+    /// The geometry coordinates are converted to 3D positions as offsets from the user's location.
+    /// For example, if the user is at (139.7671°E, 35.6812°N) and a point is at (139.7681°E, 35.6822°N),
+    /// the resulting 3D position will represent the difference: ~100m East and ~100m North (with scale=1.0)
     /// - Parameters:
-    ///   - userLatitude: User's current latitude in WGS84 (degrees)
-    ///   - userLongitude: User's current longitude in WGS84 (degrees)
+    ///   - userLatitude: User's current latitude in WGS84 (degrees) - used as reference point
+    ///   - userLongitude: User's current longitude in WGS84 (degrees) - used as reference point
     ///   - scale: Scale factor for visualization (default: 1.0)
     ///   - material: Optional material to apply to the entity
-    /// - Returns: GeoJSONModelEntity with coordinate transformation centered on user's location
+    /// - Returns: GeoJSONModelEntity with coordinates calculated as offsets from user's location
     @MainActor
     public func toGeoJSONModelEntity(
         userLatitude: Double,
@@ -460,12 +463,13 @@ public extension Feature {
     }
     
     /// Convert feature to GeoJSONModelEntity using user's current WGS coordinates as origin
+    /// The feature coordinates are converted to 3D positions as offsets from the user's location.
     /// - Parameters:
-    ///   - userLatitude: User's current latitude in WGS84 (degrees)
-    ///   - userLongitude: User's current longitude in WGS84 (degrees)
+    ///   - userLatitude: User's current latitude in WGS84 (degrees) - used as reference point
+    ///   - userLongitude: User's current longitude in WGS84 (degrees) - used as reference point
     ///   - scale: Scale factor for visualization (default: 1.0)
     ///   - material: Optional material to apply to the entity
-    /// - Returns: GeoJSONModelEntity with coordinate transformation centered on user's location, or nil if no geometry
+    /// - Returns: GeoJSONModelEntity with coordinates calculated as offsets from user's location, or nil if no geometry
     @MainActor
     func toGeoJSONModelEntity(
         userLatitude: Double,
@@ -543,12 +547,13 @@ public extension FeatureCollection {
     }
     
     /// Convert feature collection to array of GeoJSONModelEntity wrappers using user's current WGS coordinates
+    /// All feature coordinates are converted to 3D positions as offsets from the user's location.
     /// - Parameters:
-    ///   - userLatitude: User's current latitude in WGS84 (degrees)
-    ///   - userLongitude: User's current longitude in WGS84 (degrees)
+    ///   - userLatitude: User's current latitude in WGS84 (degrees) - used as reference point
+    ///   - userLongitude: User's current longitude in WGS84 (degrees) - used as reference point
     ///   - scale: Scale factor for visualization (default: 1.0)
     ///   - material: Optional material to apply to all entities
-    /// - Returns: Array of GeoJSONModelEntity wrappers centered on user's location
+    /// - Returns: Array of GeoJSONModelEntity wrappers with coordinates calculated as offsets from user's location
     @MainActor
     func toGeoJSONModelEntities(
         userLatitude: Double,

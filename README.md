@@ -192,9 +192,19 @@ for geoEntity in geoEntities {
 
 ### ユーザーの現在位置を基準とした座標変換 (Coordinate Transform Based on User Location)
 
-ユーザーの現在のWGS84座標（緯度・経度）を使用して、自動的に座標変換を設定できます。
+ユーザーの現在のWGS84座標（緯度・経度）を基準点として使用し、GeoJSONの座標を**基準点からの差分（オフセット）**として3D空間に配置できます。
 
-You can automatically set up coordinate transformation using the user's current WGS84 coordinates (latitude and longitude).
+You can use the user's current WGS84 coordinates (latitude and longitude) as a reference point, and place GeoJSON coordinates in 3D space as **offsets from the reference point**.
+
+**仕組み (How it works):**
+- ユーザーの位置を原点（0, 0, 0）とする
+- GeoJSON内の各座標は、ユーザーの位置からの相対的な位置として計算される
+- 例：ユーザーが東京駅にいて、100m東のポイントがある場合、そのポイントは(100, 0, 0)の位置に配置される
+
+**Mechanism:**
+- User's position becomes the origin (0, 0, 0)
+- Each coordinate in GeoJSON is calculated as a relative position from the user's location
+- Example: If the user is at Tokyo Station and there's a point 100m to the east, that point will be placed at position (100, 0, 0)
 
 ```swift
 #if canImport(RealityKit)
@@ -202,18 +212,26 @@ import RealityKit
 import CoreLocation
 import RealityKitGeoJsonParserKit
 
-// ユーザーの現在位置を取得（例）
+// ユーザーの現在位置を取得（例：東京駅）
 let userLatitude = 35.6812  // 東京の緯度
 let userLongitude = 139.7671  // 東京の経度
 
-// GeoJSONをパース
+// GeoJSONをパース（例：東京駅から100m東にあるポイント）
+// 139.7671° + 0.001° ≈ 100m東
+let pointJSON = """
+{
+  "type": "Point",
+  "coordinates": [139.7681, 35.6812]
+}
+"""
 let geometry = try GeoJSONParser.parseGeometry(jsonString: pointJSON)
 
-// ユーザーの位置を原点として自動的に座標変換
+// ユーザーの位置を基準点として、差分を計算して3D座標に変換
+// この例では約100m東に配置される
 guard let geoEntity = geometry.toGeoJSONModelEntity(
     userLatitude: userLatitude,
     userLongitude: userLongitude,
-    scale: 100.0
+    scale: 100.0  // スケールファクター
 ) else {
     return
 }

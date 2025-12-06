@@ -71,8 +71,9 @@ public struct CoordinateTransform {
     }
     
     /// Convert a GeoJSON position (longitude, latitude, altitude) to a 3D point
+    /// This method calculates the difference from the reference point (origin) and converts it to 3D coordinates
     /// - Parameter position: GeoJSON position array [longitude, latitude, altitude?]
-    /// - Returns: Point3D representing the point in 3D space
+    /// - Returns: Point3D representing the offset from the origin in 3D space
     public func toPoint3D(_ position: Position) -> Point3D {
         guard position.count >= 2 else {
             #if canImport(simd)
@@ -86,14 +87,15 @@ public struct CoordinateTransform {
         let latitude = position[1]
         let altitude = position.count > 2 ? position[2] : 0.0
         
-        // Convert to relative coordinates from origin
+        // Calculate difference from origin (reference point)
+        // This gives us the offset from the user's position when origin is set to user coordinates
         let deltaLon = longitude - config.origin.longitude
         let deltaLat = latitude - config.origin.latitude
         
-        // Convert to meters (approximation)
-        // X = longitude difference * meters per degree * cos(latitude)
-        // Z = latitude difference * meters per degree
-        // Y = altitude
+        // Convert the geographic difference to meters (approximation)
+        // X = longitude difference * meters per degree * cos(latitude) - East/West offset
+        // Z = latitude difference * meters per degree - North/South offset
+        // Y = altitude - Vertical offset
         let latRad = config.origin.latitude * .pi / 180.0
         let x = Float(deltaLon * config.metersPerDegree * cos(latRad)) * config.scale
         var y = Float(altitude) * config.scale
