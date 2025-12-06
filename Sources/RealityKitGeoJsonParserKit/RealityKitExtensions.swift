@@ -262,11 +262,11 @@ public extension Geometry {
             let start = points[i]
             let end = points[i + 1]
             
-            let length = distance(start, end)
+            let segmentLength = distance(start, end)
             let direction = normalize(end - start)
             let midpoint = (start + end) * 0.5
             
-            let mesh = MeshResource.generateBox(width: 0.02, height: 0.02, depth: length)
+            let mesh = MeshResource.generateBox(width: 0.02, height: 0.02, depth: segmentLength)
             let usedMaterial = material ?? SimpleMaterial(color: .blue, isMetallic: false)
             let segment = ModelEntity(mesh: mesh, materials: [usedMaterial])
             
